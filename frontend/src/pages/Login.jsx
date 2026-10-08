@@ -6,24 +6,65 @@ function Login() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const [message, setMessage] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  async function handleLogin(e) {
+  async function sendOtp(e) {
     e.preventDefault();
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setMessage("Please enter your email.");
+      return;
+    }
 
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    const { error } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        shouldCreateUser: false
+      }
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(
+        "This email is not registered. Please create an account first."
+      );
+      setLoading(false);
+      return;
+    }
+
+    setOtpSent(true);
+    setMessage("8-digit OTP sent to your email.");
+    setLoading(false);
+  }
+
+  async function verifyOtp(e) {
+    e.preventDefault();
+
+    if (otp.length !== 8) {
+      setMessage("Please enter the complete 8-digit OTP.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: otp,
+      type: "email"
+    });
+
+    if (error || !data.user) {
+      setMessage("Invalid or expired OTP. Please try again.");
       setLoading(false);
       return;
     }
@@ -32,70 +73,87 @@ function Login() {
 
     setTimeout(() => {
       navigate("/dashboard");
-    }, 1000);
-
-    setLoading(false);
+    }, 500);
   }
 
   return (
     <div className="auth-page">
-
       <div className="auth-card">
 
         <div className="auth-logo">
           Sports<span>Hub</span>
         </div>
 
-        <h1>Welcome Back</h1>
+        <h1>{otpSent ? "Verify OTP" : "Welcome Back"}</h1>
 
         <p className="auth-subtitle">
-          Login to your SportsHub account.
+          {otpSent
+            ? `Enter the 8-digit OTP sent to ${email}`
+            : "Login using your registered email."}
         </p>
 
-        <form onSubmit={handleLogin}>
+        {!otpSent ? (
+          <form onSubmit={sendOtp}>
 
-          <label>Email Address</label>
+            <label>Email Address</label>
 
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+            <input
+              type="email"
+              placeholder="Enter your registered email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
 
-          <label>Password</label>
+            <button
+              type="submit"
+              className="auth-button"
+              disabled={loading}
+            >
+              {loading ? "Sending OTP..." : "Send OTP"}
+            </button>
 
-          <input
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          </form>
+        ) : (
+          <form onSubmit={verifyOtp}>
 
-          <div className="remember-row">
+            <label>8-Digit OTP</label>
 
-            <label>
-              <input type="checkbox" />
-              Remember me
-            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Enter 8-digit OTP"
+              value={otp}
+              onChange={(e) =>
+                setOtp(e.target.value.replace(/\D/g, ""))
+              }
+              maxLength="8"
+              required
+            />
 
-            <a href="#">
-              Forgot Password?
-            </a>
+            <button
+              type="submit"
+              className="auth-button"
+              disabled={loading}
+            >
+              {loading ? "Verifying..." : "Verify OTP"}
+            </button>
 
-          </div>
+            <button
+              type="button"
+              className="auth-button"
+              onClick={() => {
+                setOtpSent(false);
+                setOtp("");
+                setMessage("");
+              }}
+              style={{ marginTop: "10px" }}
+            >
+              Change Email
+            </button>
 
-          <button
-            type="submit"
-            className="auth-button"
-            disabled={loading}
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-
-        </form>
+          </form>
+        )}
 
         {message && (
           <p className="auth-message">
@@ -113,7 +171,6 @@ function Login() {
         </Link>
 
       </div>
-
     </div>
   );
 }

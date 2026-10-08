@@ -3,275 +3,167 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 function Register() {
-
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    sport: "",
-    password: ""
-  });
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [sport, setSport] = useState("");
+  const [password, setPassword] = useState("");
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-
-  function handleChange(e) {
-
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-
-  }
-
-
   async function handleRegister(e) {
-
     e.preventDefault();
 
-    setLoading(true);
     setMessage("");
 
+    const cleanEmail = email.trim().toLowerCase();
 
-    const { data, error } =
-      await supabase.auth.signUp({
-
-        email: formData.email,
-
-        password: formData.password
-
-      });
-
-
-    if (error) {
-
-      setMessage(error.message);
-
-      setLoading(false);
-
+    if (!fullName || !cleanEmail || !phone || !sport || !password) {
+      setMessage("Please fill in all fields.");
       return;
     }
 
-
-    if (data.user) {
-
-      const { error: profileError } =
-        await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: data.user.id,
-              full_name: formData.fullName,
-              phone: formData.phone,
-              sport: formData.sport,
-              role: "member"
-            },
-            {
-              onConflict: "id"
-            }
-          );
-
-
-      if (profileError) {
-
-        setMessage(profileError.message);
-
-        setLoading(false);
-
-        return;
-      }
+    if (password.length < 6) {
+      setMessage("Password must be at least 6 characters.");
+      return;
     }
 
+    setLoading(true);
 
-    setMessage(
-      "Registration successful!"
-    );
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: password,
+      options: {
+        data: {
+          full_name: fullName,
+          phone: phone,
+          sport: sport
+        }
+      }
+    });
 
+    if (error) {
+      setMessage(error.message);
+      setLoading(false);
+      return;
+    }
 
-    setTimeout(() => {
+    if (data.user) {
+      setMessage(
+        "Account created successfully! You can now login with your email and OTP."
+      );
 
-      navigate("/login");
-
-    }, 1000);
-
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    }
 
     setLoading(false);
   }
 
-
   return (
-
     <div className="auth-page">
-
-      <div className="auth-card register-card">
+      <div className="auth-card">
 
         <div className="auth-logo">
           Sports<span>Hub</span>
         </div>
 
-
-        <h1>
-          Create Account
-        </h1>
-
+        <h1>Create Account</h1>
 
         <p className="auth-subtitle">
-          Join your sports club today.
+          Join SportsHub and manage your sports activities.
         </p>
-
 
         <form onSubmit={handleRegister}>
 
-          <label>
-            Full Name
-          </label>
+          <label>Full Name</label>
 
           <input
             type="text"
-            name="fullName"
             placeholder="Enter your full name"
-            value={formData.fullName}
-            onChange={handleChange}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
             required
           />
 
-
-          <label>
-            Email Address
-          </label>
+          <label>Email Address</label>
 
           <input
             type="email"
-            name="email"
             placeholder="Enter your email"
-            value={formData.email}
-            onChange={handleChange}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
 
-
-          <label>
-            Phone Number
-          </label>
+          <label>Phone Number</label>
 
           <input
             type="tel"
-            name="phone"
             placeholder="Enter your phone number"
-            value={formData.phone}
-            onChange={handleChange}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             required
           />
 
-
-          <label>
-            Select Sport
-          </label>
+          <label>Sport</label>
 
           <select
-            name="sport"
-            value={formData.sport}
-            onChange={handleChange}
+            value={sport}
+            onChange={(e) => setSport(e.target.value)}
             required
           >
-
-            <option value="">
-              Choose your sport
-            </option>
-
-            <option>
-              Football
-            </option>
-
-            <option>
-              Cricket
-            </option>
-
-            <option>
-              Basketball
-            </option>
-
-            <option>
-              Badminton
-            </option>
-
-            <option>
-              Volleyball
-            </option>
-
-            <option>
-              Tennis
-            </option>
-
-            <option>
-              Athletics
-            </option>
-
+            <option value="">Select your sport</option>
+            <option value="Cricket">Cricket</option>
+            <option value="Football">Football</option>
+            <option value="Volleyball">Volleyball</option>
+            <option value="Badminton">Badminton</option>
+            <option value="Basketball">Basketball</option>
+            <option value="Tennis">Tennis</option>
+            <option value="Athletics">Athletics</option>
+            <option value="Other">Other</option>
           </select>
 
-
-          <label>
-            Password
-          </label>
+          <label>Password</label>
 
           <input
             type="password"
-            name="password"
             placeholder="Create a password"
-            value={formData.password}
-            onChange={handleChange}
-            minLength="6"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
-
 
           <button
             type="submit"
             className="auth-button"
             disabled={loading}
           >
-
-            {loading
-              ? "Creating Account..."
-              : "Create Account"}
-
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
 
         </form>
 
-
         {message && (
-
           <p className="auth-message">
             {message}
           </p>
-
         )}
 
-
         <p className="auth-footer">
-
           Already have an account?
-
-          <Link to="/login">
-            {" "}Login
-          </Link>
-
+          <Link to="/login"> Login</Link>
         </p>
 
-
-        <Link
-          to="/"
-          className="back-home"
-        >
+        <Link to="/" className="back-home">
           ← Back to Home
         </Link>
 
       </div>
-
     </div>
   );
 }
