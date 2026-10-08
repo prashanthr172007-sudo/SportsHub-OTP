@@ -27,14 +27,12 @@ function Login() {
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
       options: {
-        shouldCreateUser: false
+        shouldCreateUser: true
       }
     });
 
     if (error) {
-      setMessage(
-        "This email is not registered. Please create an account first."
-      );
+      setMessage("Unable to send OTP. Please try again.");
       setLoading(false);
       return;
     }
@@ -69,7 +67,31 @@ function Login() {
       return;
     }
 
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      setMessage("Unable to continue. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    if (!profile) {
+      navigate("/register", {
+        state: {
+          email: cleanEmail,
+          verifiedUserId: data.user.id,
+          isNewSignup: true
+        }
+      });
+      return;
+    }
+
     setMessage("Login successful!");
+    setLoading(false);
 
     setTimeout(() => {
       navigate("/dashboard");
@@ -79,7 +101,6 @@ function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-
         <div className="auth-logo">
           Sports<span>Hub</span>
         </div>
@@ -89,17 +110,16 @@ function Login() {
         <p className="auth-subtitle">
           {otpSent
             ? `Enter the 8-digit OTP sent to ${email}`
-            : "Login using your registered email."}
+            : "Login using your email."}
         </p>
 
         {!otpSent ? (
           <form onSubmit={sendOtp}>
-
             <label>Email Address</label>
 
             <input
               type="email"
-              placeholder="Enter your registered email"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -112,11 +132,9 @@ function Login() {
             >
               {loading ? "Sending OTP..." : "Send OTP"}
             </button>
-
           </form>
         ) : (
           <form onSubmit={verifyOtp}>
-
             <label>8-Digit OTP</label>
 
             <input
@@ -124,9 +142,7 @@ function Login() {
               inputMode="numeric"
               placeholder="Enter 8-digit OTP"
               value={otp}
-              onChange={(e) =>
-                setOtp(e.target.value.replace(/\D/g, ""))
-              }
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
               maxLength="8"
               required
             />
@@ -151,15 +167,10 @@ function Login() {
             >
               Change Email
             </button>
-
           </form>
         )}
 
-        {message && (
-          <p className="auth-message">
-            {message}
-          </p>
-        )}
+        {message && <p className="auth-message">{message}</p>}
 
         <p className="auth-footer">
           Don't have an account?
@@ -169,7 +180,6 @@ function Login() {
         <Link to="/" className="back-home">
           ← Back to Home
         </Link>
-
       </div>
     </div>
   );
